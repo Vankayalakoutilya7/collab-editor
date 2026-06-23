@@ -23,9 +23,9 @@ public class RedisConfig {
         String password = System.getenv("SPRING_REDIS_PASSWORD");
 
         // 🔥 Fallback for LOCAL (IMPORTANT)
-        if (host == null) host = "probable-ladybug-80026.upstash.io";
-        if (portStr == null) portStr = "6379";
-        if (password == null) password = "gQAAAAAAATiaAAIncDEyNTczYTZiODUwZDI0MTZiYWE4NzllZjFjN2FlNDlkOXAxODAwMjY";
+        if (host == null) host = "intent-quail-135082.upstash.io";
+if (portStr == null) portStr = "6379";
+if (password == null) password = "gQAAAAAAAg-qAAIgcDFjYmJjOTk0Yjc3MDk0ZTMzYTgxNjNhN2ExYjJiYTdhZg";
 
         int port = Integer.parseInt(portStr);
 

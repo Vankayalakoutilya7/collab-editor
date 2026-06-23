@@ -530,7 +530,7 @@
   Example: const BACKEND_URL = 'https://collab-editor-backend-xxxx.onrender.com';
 -->
 <script>
-  const BACKEND_URL = 'http://localhost:8080'; // ← REPLACE THIS
+  const BACKEND_URL = ''; // ← REPLACE THIS
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
@@ -901,7 +901,7 @@ function copyShareLink() {
 // ── Load saved content from MongoDB on open ────────────────────
 async function loadSavedContent(docId) {
   try {
-    const res = await fetch(`${BACKEND_URL}/document/${docId}`);
+    const res = await fetch(`${BACKEND_URL || window.location.origin}/document/${docId}`);
     if (!res.ok) return;
     const content = await res.text();
     if (!content) return;
