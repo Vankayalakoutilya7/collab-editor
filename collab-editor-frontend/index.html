@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CollabEdit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #21262d;
+    --border:    #30363d;
+    --accent:    #58a6ff;
+    --accent-dim:#1f6feb33;
+    --green:     #3fb950;
+    --red:       #f85149;
+    --text:      #e6edf3;
+    --text-muted:#8b949e;
+    --text-dim:  #484f58;
+    --radius:    8px;
+    --font:      'Inter', system-ui, sans-serif;
+    --mono:      'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+  /* ── LOBBY ── */
+  #lobby {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(88,166,255,0.08) 0%, transparent 70%), var(--bg);
+  }
+
+  .lobby-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .lobby-logo svg { color: var(--accent); }
+
+  .lobby-logo-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+
+  .lobby-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  }
+
+  .lobby-card h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .lobby-card p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+
+  .field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  .field input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: var(--text);
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .field input::placeholder { color: var(--text-dim); }
+  .field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    background: var(--accent);
+    color: #0d1117;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 4px;
+  }
+
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .recent-docs { margin-top: 0; }
+  .recent-docs p { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px; }
+  .recent-list { display: flex; flex-direction: column; gap: 4px; }
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    transition: background 0.12s, color 0.12s;
+  }
+  .recent-item:hover { background: var(--border); color: var(--text); }
+  .recent-item svg { flex-shrink: 0; color: var(--text-dim); }
+
+  /* ── EDITOR SHELL ── */
+  #editor-shell {
+    display: none;
+    height: 100vh;
+    flex-direction: column;
+  }
+
+  /* Topbar */
+  .topbar {
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    margin-right: 4px;
+  }
+
+  .topbar-logo span {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+
+  .doc-name {
+    flex: 1;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text);
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    max-width: 280px;
+  }
+  .doc-name:hover { border-color: var(--border); background: var(--surface2); }
+  .doc-name:focus { border-color: var(--accent); background: var(--surface2); }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .conn-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .conn-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .conn-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .conn-dot.error { background: var(--red); }
+
+  .collaborators {
+    display: flex;
+    align-items: center;
+    gap: -4px;
+  }
+
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 2px solid var(--surface);
+    margin-left: -6px;
+    flex-shrink: 0;
+  }
+
+  .btn-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+  }
+  .btn-icon:hover { color: var(--text); background: var(--border); }
+
+  .btn-share {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: background 0.12s;
+  }
+  .btn-share:hover { background: rgba(31,111,235,0.25); }
+
+  /* Editor body */
+  .editor-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Main editor */
+  .editor-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #editor {
+    flex: 1;
+    padding: 48px 64px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: var(--text);
+    outline: none;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    caret-color: var(--accent);
+  }
+
+  #editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    font-size: 0.82rem;
+  }
+
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .online-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    color: var(--text-muted);
+  }
+
+  .online-user .avatar { margin-left: 0; width: 22px; height: 22px; font-size: 0.65rem; }
+
+  #word-count {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.8;
+  }
+
+  #word-count span { color: var(--text); font-weight: 500; }
+
+  /* Status bar */
+  .statusbar {
+    height: 26px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .statusbar-item { display: flex; align-items: center; gap: 4px; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.82rem;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), opacity 0.2s;
+    opacity: 0;
+    z-index: 999;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOBBY ═══════════════ -->
+<div id="lobby">
+  <div class="lobby-logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="9" y1="13" x2="15" y2="13"/>
+      <line x1="9" y1="17" x2="12" y2="17"/>
+    </svg>
+    <span class="lobby-logo-text">CollabEdit</span>
+  </div>
+
+  <div class="lobby-card">
+    <h2>Open a document</h2>
+    <p>Enter any document ID to start editing. Share the same ID with teammates to collaborate in real time.</p>
+
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="user-name" placeholder="e.g. Koutilya" maxlength="30" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Document ID</label>
+      <input type="text" id="doc-id-input" placeholder="e.g. project-notes" maxlength="50" autocomplete="off">
+    </div>
+    <button class="btn-primary" onclick="openDocument()">Open document →</button>
+
+    <div class="divider">or jump back in</div>
+    <div class="recent-docs">
+      <div class="recent-list" id="recent-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ EDITOR ═══════════════ -->
+<div id="editor-shell">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span>CollabEdit</span>
+    </div>
+
+    <input class="doc-name" id="doc-name-display" type="text" readonly>
+
+    <div class="topbar-right">
+      <div class="conn-badge">
+        <div class="conn-dot" id="conn-dot"></div>
+        <span id="conn-label">Connecting…</span>
+      </div>
+
+      <div class="collaborators" id="collaborators"></div>
+
+      <button class="btn-share" onclick="copyShareLink()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Share
+      </button>
+
+      <button class="btn-icon" onclick="goHome()" title="Back to lobby">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="editor-body">
+    <div class="editor-main">
+      <div
+        id="editor"
+        contenteditable="true"
+        spellcheck="true"
+        data-placeholder="Start typing… your changes sync instantly with collaborators."
+      ></div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Online now</div>
+        <div id="online-users"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Document</div>
+        <div id="word-count">
+          <div><span id="wc-words">0</span> words</div>
+          <div><span id="wc-chars">0</span> characters</div>
+          <div><span id="wc-lines">1</span> lines</div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Doc ID</div>
+        <div style="color:var(--text-muted);word-break:break-all;font-family:var(--mono);font-size:0.75rem;line-height:1.6" id="sidebar-docid"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div class="statusbar-item" id="sync-status">● Syncing…</div>
+    <div class="statusbar-item" id="cursor-pos">Ln 1, Col 1</div>
+    <div class="statusbar-item" style="margin-left:auto">CollabEdit — real-time collaborative editor</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<!--
+  IMPORTANT: Replace the BACKEND_URL below with your actual Render backend URL.
+  Example: const BACKEND_URL = 'https://collab-editor-backend-xxxx.onrender.com';
+-->
+<script>
+  const BACKEND_URL = 'https://your-backend.onrender.com'; // ← REPLACE THIS
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/yjs@13.6.18/dist/yjs.js"></script>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────
+let stompClient  = null;
+let ydoc         = null;
+let ytext        = null;
+let currentDocId = null;
+let currentUser  = null;
+let isRemoteUpdate = false;
+const AVATAR_COLORS = ['#58a6ff','#3fb950','#f78166','#d2a8ff','#ffa657','#79c0ff'];
+
+// ── Utils ──────────────────────────────────────────────────────
+function avatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+}
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── Recent docs (localStorage) ─────────────────────────────────
+function getRecent() {
+  try { return JSON.parse(localStorage.getItem('ce_recent') || '[]'); } catch { return []; }
+}
+
+function addRecent(docId) {
+  let r = getRecent().filter(d => d !== docId);
+  r.unshift(docId);
+  r = r.slice(0, 5);
+  localStorage.setItem('ce_recent', JSON.stringify(r));
+}
+
+function renderRecent() {
+  const list = document.getElementById('recent-list');
+  const recent = getRecent();
+  if (!recent.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:0.78rem">No recent documents yet.</div>';
+    return;
+  }
+  list.innerHTML = recent.map(d => `
+    <div class="recent-item" onclick="quickOpen('${d}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      ${d}
+    </div>`).join('');
+}
+
+function quickOpen(docId) {
+  const nameInput = document.getElementById('user-name');
+  const name = nameInput.value.trim() || localStorage.getItem('ce_username') || 'Anonymous';
+  nameInput.value = name;
+  document.getElementById('doc-id-input').value = docId;
+  openDocument();
+}
+
+// ── Open document ──────────────────────────────────────────────
+function openDocument() {
+  const nameInput = document.getElementById('user-name');
+  const docInput  = document.getElementById('doc-id-input');
+
+  const name  = nameInput.value.trim() || 'Anonymous';
+  const docId = docInput.value.trim().replace(/\s+/g, '-').toLowerCase();
+
+  if (!docId) { docInput.focus(); showToast('Enter a document ID first.'); return; }
+
+  currentUser  = name;
+  currentDocId = docId;
+
+  localStorage.setItem('ce_username', name);
+  addRecent(docId);
+
+  document.getElementById('doc-name-display').value = docId;
+  document.getElementById('sidebar-docid').textContent = docId;
+
+  document.getElementById('lobby').style.display = 'none';
+  const shell = document.getElementById('editor-shell');
+  shell.style.display = 'flex';
+
+  // Add self to collaborators bar
+  renderCollaborator(name);
+
+  initYjs();
+  connectWebSocket(docId);
+}
+
+// ── Yjs ────────────────────────────────────────────────────────
+function initYjs() {
+  ydoc  = new Y.Doc();
+  ytext = ydoc.getText('content');
+
+  const editor = document.getElementById('editor');
+
+  // Yjs → DOM
+  ytext.observe(event => {
+    if (isRemoteUpdate) return; // already handled by STOMP
+    // Local change — editor already reflects it via contenteditable,
+    // but we sync the Yjs state to the editor on remote updates.
+  });
+}
+
+// ── WebSocket (STOMP) ──────────────────────────────────────────
+function connectWebSocket(docId) {
+  setConnStatus('connecting');
+
+  const socket = new SockJS(`${BACKEND_URL}/ws`);
+  stompClient = new StompJs.Client({
+    webSocketFactory: () => socket,
+    reconnectDelay: 3000,
+
+    onConnect: () => {
+      setConnStatus('connected');
+      setSyncStatus('Synced');
+
+      // Subscribe to document updates from other users
+      stompClient.subscribe(`/topic/document/${docId}`, (msg) => {
+        const raw = msg.body; // e.g. "[1, 0, 2, ...]"
+        applyRemoteUpdate(raw);
+      });
+    },
+
+    onDisconnect: () => setConnStatus('disconnected'),
+    onStompError:  () => setConnStatus('error'),
+    onWebSocketError: () => setConnStatus('error'),
+  });
+
+  stompClient.activate();
+}
+
+// ── Send update to backend ─────────────────────────────────────
+function sendUpdate(updateBytes) {
+  if (!stompClient || !stompClient.connected) return;
+  // Backend expects List<Integer> — convert Uint8Array to plain array
+  const payload = Array.from(updateBytes);
+  setSyncStatus('Syncing…');
+  stompClient.publish({
+    destination: `/app/edit/${currentDocId}`,
+    body: JSON.stringify(payload)
+  });
+}
+
+// ── Apply remote update ────────────────────────────────────────
+function applyRemoteUpdate(raw) {
+  // Backend sends "[1, 2, 3, ...]" string from Arrays.toString()
+  const nums = raw.replace(/[\[\]\s]/g, '').split(',').map(Number);
+  if (!nums.length || isNaN(nums[0])) return;
+
+  const bytes = new Uint8Array(nums);
+  isRemoteUpdate = true;
+  try {
+    Y.applyUpdate(ydoc, bytes);
+    // Sync Yjs state → editor DOM
+    const content = ytext.toString();
+    const editor = document.getElementById('editor');
+    if (editor.innerText !== content) {
+      const sel = saveSelection(editor);
+      editor.innerText = content;
+      restoreSelection(editor, sel);
+    }
+  } catch(e) {
+    console.warn('Failed to apply remote update:', e);
+  }
+  isRemoteUpdate = false;
+  setSyncStatus('Synced');
+}
+
+// ── Editor events ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderRecent();
+
+  // Enter key in lobby inputs
+  document.getElementById('user-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('doc-id-input').focus();
+  });
+  document.getElementById('doc-id-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') openDocument();
+  });
+
+  // Fill username from localStorage
+  const saved = localStorage.getItem('ce_username');
+  if (saved) document.getElementById('user-name').value = saved;
+
+  const editor = document.getElementById('editor');
+
+  // Local edits — capture, sync to Yjs, send to backend
+  let sendTimer = null;
+  editor.addEventListener('input', () => {
+    const content = editor.innerText || '';
+
+    // Update Yjs doc
+    ydoc.transact(() => {
+      ytext.delete(0, ytext.length);
+      ytext.insert(0, content);
+    });
+
+    // Debounced send (50ms) — avoids flooding on fast typing
+    clearTimeout(sendTimer);
+    sendTimer = setTimeout(() => {
+      const update = Y.encodeStateAsUpdate(ydoc);
+      sendUpdate(update);
+    }, 50);
+
+    updateWordCount(content);
+    setSyncStatus('Unsaved…');
+  });
+
+  // Cursor position tracker
+  editor.addEventListener('keyup', updateCursorPos);
+  editor.addEventListener('click', updateCursorPos);
+  editor.addEventListener('focus', updateCursorPos);
+});
+
+// ── Word count ─────────────────────────────────────────────────
+function updateWordCount(text) {
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const chars  = text.replace(/\n/g, '').length;
+  const lines  = text.split('\n').length;
+  document.getElementById('wc-words').textContent = words;
+  document.getElementById('wc-chars').textContent = chars;
+  document.getElementById('wc-lines').textContent = lines;
+}
+
+// ── Cursor position ────────────────────────────────────────────
+function updateCursorPos() {
+  const editor = document.getElementById('editor');
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.selectNodeContents(editor);
+  range.setEnd(sel.getRangeAt(0).endContainer, sel.getRangeAt(0).endOffset);
+  const text = range.toString();
+  const lines = text.split('\n');
+  const ln = lines.length;
+  const col = lines[lines.length - 1].length + 1;
+  document.getElementById('cursor-pos').textContent = `Ln ${ln}, Col ${col}`;
+}
+
+// ── Selection save/restore (for remote updates) ────────────────
+function saveSelection(el) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  return { start: getOffset(el, range.startContainer, range.startOffset),
+           end:   getOffset(el, range.endContainer,   range.endOffset) };
+}
+
+function getOffset(root, node, offset) {
+  let pos = 0;
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  while (walk.nextNode()) {
+    if (walk.currentNode === node) return pos + offset;
+    pos += walk.currentNode.textContent.length;
+  }
+  return pos;
+}
+
+function restoreSelection(el, saved) {
+  if (!saved) return;
+  const sel = window.getSelection();
+  const range = document.createRange();
+  let pos = 0;
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  while (walk.nextNode()) {
+    const len = walk.currentNode.textContent.length;
+    if (pos + len >= saved.start && !range.startContainer.nodeType) {
+      range.setStart(walk.currentNode, saved.start - pos);
+    }
+    if (pos + len >= saved.end) {
+      range.setEnd(walk.currentNode, saved.end - pos);
+      break;
+    }
+    pos += len;
+  }
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// ── UI helpers ─────────────────────────────────────────────────
+function setConnStatus(status) {
+  const dot   = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  dot.className = 'conn-dot';
+  if (status === 'connected')    { dot.classList.add('connected'); label.textContent = 'Connected'; }
+  else if (status === 'error')   { dot.classList.add('error');     label.textContent = 'Error'; }
+  else if (status === 'disconnected') { label.textContent = 'Disconnected'; }
+  else { label.textContent = 'Connecting…'; }
+}
+
+function setSyncStatus(msg) {
+  document.getElementById('sync-status').textContent = '● ' + msg;
+}
+
+function renderCollaborator(name) {
+  const bar = document.getElementById('collaborators');
+  const onlineList = document.getElementById('online-users');
+  const color = avatarColor(name);
+
+  // Topbar avatar
+  if (!document.getElementById('av-' + btoa(name).replace(/=/g,''))) {
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.id = 'av-' + btoa(name).replace(/=/g,'');
+    av.style.background = color;
+    av.style.color = '#0d1117';
+    av.title = name;
+    av.textContent = initials(name);
+    bar.appendChild(av);
+  }
+
+  // Sidebar online list
+  const existing = document.getElementById('ol-' + btoa(name).replace(/=/g,''));
+  if (!existing) {
+    const div = document.createElement('div');
+    div.className = 'online-user';
+    div.id = 'ol-' + btoa(name).replace(/=/g,'');
+    div.innerHTML = `
+      <div class="avatar" style="background:${color};color:#0d1117">${initials(name)}</div>
+      <span style="color:var(--text-muted)">${name}</span>
+      <span style="margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)"></span>`;
+    onlineList.appendChild(div);
+  }
+}
+
+function copyShareLink() {
+  const url = `${window.location.origin}${window.location.pathname}?doc=${currentDocId}`;
+  navigator.clipboard.writeText(url).then(() => showToast('Share link copied!'));
+}
+
+function goHome() {
+  if (stompClient) stompClient.deactivate();
+  document.getElementById('editor-shell').style.display = 'none';
+  document.getElementById('lobby').style.display = 'flex';
+  document.getElementById('editor').innerText = '';
+  document.getElementById('collaborators').innerHTML = '';
+  document.getElementById('online-users').innerHTML = '';
+  renderRecent();
+}
+
+// ── Auto-open from URL param (?doc=docId) ─────────────────────
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const docFromUrl = params.get('doc');
+  if (docFromUrl) {
+    document.getElementById('doc-id-input').value = docFromUrl;
+    const saved = localStorage.getItem('ce_username');
+    if (saved) document.getElementById('user-name').value = saved;
+  }
+});
+</script>
+</body>
+</html>
