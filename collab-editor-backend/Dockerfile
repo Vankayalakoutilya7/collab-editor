@@ -1,6 +1,6 @@
 FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
-COPY collab-editor-backend/ .
+COPY . .
 RUN chmod +x mvnw
 RUN ./mvnw clean package -DskipTests
 
